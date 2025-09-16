@@ -1,3 +1,4 @@
+
 import { LoginForm } from "@/components/auth/login-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen } from "lucide-react"
@@ -7,7 +8,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Logo and Header */}
         <div className="text-center space-y-4">
           <Link href="/" className="inline-flex items-center space-x-2">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
@@ -21,7 +21,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Login Form */}
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
@@ -32,7 +31,6 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Sign Up Link */}
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{" "}
