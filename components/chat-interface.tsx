@@ -54,24 +54,9 @@ const mockMessages: Message[] = [
   {
     id: "1",
     content:
-      "Hello! I'm your AI study assistant. I can help you understand your uploaded documents, create study materials, and answer questions. What would you like to learn about today?",
+      "Hello! I'm your AI study assistant powered by Google Gemini. I can help you understand your uploaded documents, create study materials, answer questions, and provide explanations. What would you like to learn about today?",
     sender: "ai",
     timestamp: new Date(Date.now() - 10 * 60 * 1000),
-  },
-  {
-    id: "2",
-    content: "Can you help me understand photosynthesis from my biology notes?",
-    sender: "user",
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000),
-    relatedDocument: "Biology Chapter 12.pdf",
-  },
-  {
-    id: "3",
-    content:
-      "Based on your Biology Chapter 12 notes, photosynthesis is the process by which plants convert light energy into chemical energy. Here's a simplified breakdown:\n\n1. **Light Reaction**: Occurs in the thylakoids, where chlorophyll absorbs light energy\n2. **Calvin Cycle**: Takes place in the stroma, where CO₂ is converted into glucose\n\nThe overall equation is: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂\n\nWould you like me to explain any specific part in more detail?",
-    sender: "ai",
-    timestamp: new Date(Date.now() - 7 * 60 * 1000),
-    relatedDocument: "Biology Chapter 12.pdf",
   },
 ]
 
@@ -103,7 +88,7 @@ export function ChatInterface() {
     }
   }, [])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
     const newMessage: Message = {
@@ -114,21 +99,64 @@ export function ChatInterface() {
     }
 
     setMessages((prev) => [...prev, newMessage])
+    const currentInput = inputValue
     setInputValue("")
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Call the real AI API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          documentContext: selectedDocument?.name ? `Document: ${selectedDocument.name}` : null,
+          chatHistory: messages.slice(-10), // Send last 10 messages for context
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to get AI response")
+      }
+
+      const data = await response.json()
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content:
-          "I understand your question. Let me analyze your documents and provide a comprehensive answer based on the materials you've uploaded.",
+        content: data.response,
+        sender: "ai",
+        timestamp: new Date(),
+        relatedDocument: selectedDocument?.name,
+      }
+
+      setMessages((prev) => [...prev, aiResponse])
+    } catch (error) {
+      console.error("Error getting AI response:", error)
+      
+      // Show appropriate error message to user based on the error
+      let errorMessage = "Sorry, I'm having trouble responding right now. Please try again in a moment."
+      
+      if (error instanceof Error) {
+        if (error.message.includes("busy") || error.message.includes("overloaded")) {
+          errorMessage = "I'm currently experiencing high demand. Please try again in a few seconds."
+        } else if (error.message.includes("unavailable")) {
+          errorMessage = "AI service is temporarily down. Please try again shortly."
+        }
+      }
+      
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: errorMessage,
         sender: "ai",
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, aiResponse])
+      setMessages((prev) => [...prev, errorResponse])
+    } finally {
       setIsTyping(false)
-    }, 2000)
+    }
   }
 
   const formatTime = (date: Date) => {
@@ -297,7 +325,12 @@ export function ChatInterface() {
                     ? `Ask a question about ${selectedDocument.name}...`
                     : "Ask a question about your documents..."
                 }
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
                 className="flex-1"
               />
               <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping}>

@@ -2,14 +2,23 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { authService } from "@/lib/auth"
+// import { useEffect, useState } from "react"
+// import { useRouter } from "next/navigation"
+// import { Loader2 } from "lucide-react"
+// import { authService } from "@/lib/auth"
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
+
+export function AuthGuard({ children }: AuthGuardProps) {
+  // TODO: Auth guard disabled for development
+  // Remove this when authentication is needed again
+  return <>{children}</>
+}
+
+/*
+Original auth guard code - uncomment when authentication is needed
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
@@ -45,3 +54,4 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   return <>{children}</>
 }
+*/
