@@ -80,12 +80,12 @@ export function Header() {
         </Button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <button className="relative h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+          <DropdownMenuTrigger asChild>
+            <Button className="relative h-8 w-8 rounded-full bg-primary p-0">
               <span className="text-sm font-medium text-primary-foreground">
                 {user ? getInitials(user.name) : "U"}
               </span>
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <div className="flex items-center justify-start gap-2 p-2">
