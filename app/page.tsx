@@ -1,7 +1,7 @@
-import { AuthGuard } from "@/components/auth/auth-guard"
-import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
-import { Dashboard } from "@/components/dashboard"
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { Dashboard } from "@/components/dashboard";
 
 export default function HomePage() {
   return (
@@ -16,5 +16,5 @@ export default function HomePage() {
         </div>
       </div>
     </AuthGuard>
-  )
+  );
 }
