@@ -1,6 +1,6 @@
 "use client"
 import { Button } from "@/components/ui/button"
-import { BookOpen, MessageSquare, Upload, BarChart3, Trophy, User, Home, Settings, X, Menu } from "lucide-react"
+import { BookOpen, MessageSquare, Upload, BarChart3, Trophy, User, Home, Settings, X, Menu, FileText } from "lucide-react"
 import Link from "next/link"
 
 import { useState } from "react"
@@ -12,6 +12,7 @@ const navigation = [
   { name: "Flashcards", href: "/flashcards", icon: BookOpen },
   { name: "Progress", href: "/progress", icon: BarChart3 },
   { name: "Achievements", href: "/achievements", icon: Trophy },
+  { name: "My Notes", href: "/notes", icon: FileText },
 ]
 
 export function Sidebar() {

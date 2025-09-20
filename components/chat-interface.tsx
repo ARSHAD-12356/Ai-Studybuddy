@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { useSearchParams } from "next/navigation"
 import { useSpeech } from "@/hooks/use-speech"
 import { SpeechToggle } from "@/components/speech-toggle"
+import { useNotes } from "@/contexts/notes-context"
 
 interface Message {
   id: string
@@ -43,6 +44,7 @@ export function ChatInterface() {
   
   // Speech functionality
   const { speak, isEnabled: speechEnabled } = useSpeech()
+  const { addNote } = useNotes()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -415,6 +417,17 @@ export function ChatInterface() {
                       </>
                     )}
                   </div>
+                  {/* Save to Notes button for AI responses */}
+                  {message.sender === "ai" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-1 self-start"
+                      onClick={() => addNote(message.content)}
+                    >
+                      Save to Notes
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
