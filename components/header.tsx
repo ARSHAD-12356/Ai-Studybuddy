@@ -81,7 +81,10 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="relative h-8 w-8 rounded-full bg-primary p-0">
+            <Button
+              className="relative h-8 w-8 rounded-full bg-primary p-0"
+              onClick={() => { console.log('Profile trigger clicked'); }}
+            >
               <span className="text-sm font-medium text-primary-foreground">
                 {user ? getInitials(user.name) : "U"}
               </span>

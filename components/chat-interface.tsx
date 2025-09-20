@@ -9,6 +9,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, Bot, User, FileText, Sparkles, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useSearchParams } from "next/navigation"
+import { useSpeech } from "@/hooks/use-speech"
+import { SpeechToggle } from "@/components/speech-toggle"
 
 interface Message {
   id: string
@@ -20,73 +23,163 @@ interface Message {
 
 interface ChatSession {
   id: string
-  title: string
-  lastMessage: string
-  timestamp: Date
-  documentCount: number
+  documentId: string
+  documentName: string
+  messages: Message[]
+  createdAt: string
 }
 
-const mockChatSessions: ChatSession[] = [
-  {
-    id: "1",
-    title: "Biology Chapter 12 Discussion",
-    lastMessage: "Can you explain photosynthesis in simple terms?",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    documentCount: 1,
-  },
-  {
-    id: "2",
-    title: "Math Formulas Help",
-    lastMessage: "What's the quadratic formula used for?",
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    documentCount: 2,
-  },
-  {
-    id: "3",
-    title: "History Notes Review",
-    lastMessage: "Tell me about World War II causes",
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    documentCount: 1,
-  },
-]
-
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    content:
-      "Hello! I'm your AI study assistant powered by Google Gemini. I can help you understand your uploaded documents, create study materials, answer questions, and provide explanations. What would you like to learn about today?",
-    sender: "ai",
-    timestamp: new Date(Date.now() - 10 * 60 * 1000),
-  },
-]
+// No mock data - only show real chat sessions from uploaded documents
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
+  const searchParams = useSearchParams()
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<string>("1")
+  const [selectedSession, setSelectedSession] = useState<string>("")
   const [selectedDocument, setSelectedDocument] = useState<{ id: string; name: string } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Speech functionality
+  const { speak, isEnabled: speechEnabled } = useSpeech()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const saveMessagesToLocalStorage = (updatedMessages: Message[]) => {
+    if (selectedSession) {
+      const storedSessions = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+      const updatedSessions = storedSessions.map((session: ChatSession) => {
+        if (session.id === selectedSession) {
+          return {
+            ...session,
+            messages: updatedMessages.map(msg => ({
+              ...msg,
+              timestamp: msg.timestamp.toISOString()
+            }))
+          }
+        }
+        return session
+      })
+      localStorage.setItem("chatSessions", JSON.stringify(updatedSessions))
+    }
   }
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
+  // Load chat sessions from localStorage
   useEffect(() => {
+    const loadChatSessions = () => {
+      const storedSessions = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+      
+      if (storedSessions.length > 0) {
+        // Remove mock sessions (sessions with mock document IDs)
+        const realSessions = storedSessions.filter((session: ChatSession) => 
+          !session.documentId.startsWith("mock")
+        )
+        
+        // Remove duplicate sessions (keep only the first one for each document)
+        const uniqueSessions = realSessions.filter((session: ChatSession, index: number, self: ChatSession[]) => 
+          index === self.findIndex((s: ChatSession) => s.documentId === session.documentId)
+        )
+        
+        // Update localStorage with cleaned sessions if mock sessions or duplicates were found
+        if (uniqueSessions.length !== storedSessions.length) {
+          localStorage.setItem("chatSessions", JSON.stringify(uniqueSessions))
+          console.log(`Cleaned up ${storedSessions.length - uniqueSessions.length} mock/duplicate chat sessions`)
+        }
+        
+        setChatSessions(uniqueSessions)
+      } else {
+        // No real sessions - show empty state
+        setChatSessions([])
+      }
+    }
+    
+    loadChatSessions()
+
+    // Listen for document updates (when documents are deleted)
+    const handleDocumentsUpdate = () => {
+      const previousSessions = chatSessions
+      loadChatSessions()
+      
+      // Check if the currently selected session was deleted
+      setTimeout(() => {
+        const updatedSessions = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+        if (selectedSession && !updatedSessions.find((s: ChatSession) => s.id === selectedSession)) {
+          // Current session was deleted, select the first available session or clear selection
+          if (updatedSessions.length > 0) {
+            const firstSession = updatedSessions[0]
+            setSelectedSession(firstSession.id)
+            setMessages(firstSession.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp || msg.createdAt)
+            })))
+            setSelectedDocument({
+              id: firstSession.documentId,
+              name: firstSession.documentName
+            })
+          } else {
+            // No sessions left, clear everything
+            setSelectedSession("")
+            setMessages([])
+            setSelectedDocument(null)
+          }
+        }
+      }, 100)
+    }
+
+    window.addEventListener("documentsUpdated", handleDocumentsUpdate)
+
+    return () => {
+      window.removeEventListener("documentsUpdated", handleDocumentsUpdate)
+    }
+  }, [])
+
+  // Handle URL parameters and selected document
+  useEffect(() => {
+    const sessionId = searchParams.get("session")
     const storedDoc = localStorage.getItem("selectedDocument")
+    
     if (storedDoc) {
       try {
         const doc = JSON.parse(storedDoc)
         setSelectedDocument(doc)
+        
+        // If there's a session ID in the URL, select that session
+        if (sessionId) {
+          setSelectedSession(sessionId)
+          
+          // Load messages for the selected session
+          const storedSessions = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+          const targetSession = storedSessions.find((s: ChatSession) => s.id === sessionId)
+          
+          if (targetSession) {
+            // Convert stored messages to the correct format
+            const formattedMessages = targetSession.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp || msg.createdAt)
+            }))
+            setMessages(formattedMessages)
+          }
+        } else if (chatSessions.length > 0) {
+          // If no session ID, select the first session
+          const firstSession = chatSessions[0]
+          setSelectedSession(firstSession.id)
+          setMessages(firstSession.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp || msg.createdAt)
+          })))
+        }
       } catch (error) {
         console.error("Error parsing selected document:", error)
       }
     }
-  }, [])
+  }, [searchParams, chatSessions])
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
@@ -98,7 +191,9 @@ export function ChatInterface() {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, newMessage])
+    const updatedMessages = [...messages, newMessage]
+    setMessages(updatedMessages)
+    saveMessagesToLocalStorage(updatedMessages)
     const currentInput = inputValue
     setInputValue("")
     setIsTyping(true)
@@ -132,7 +227,14 @@ export function ChatInterface() {
         relatedDocument: selectedDocument?.name,
       }
 
-      setMessages((prev) => [...prev, aiResponse])
+      const finalMessages = [...updatedMessages, aiResponse]
+      setMessages(finalMessages)
+      saveMessagesToLocalStorage(finalMessages)
+      
+      // Speak the AI response if speech is enabled
+      if (speechEnabled && data.response) {
+        speak(data.response)
+      }
     } catch (error) {
       console.error("Error getting AI response:", error)
       
@@ -153,7 +255,9 @@ export function ChatInterface() {
         sender: "ai",
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, errorResponse])
+      const errorMessages = [...updatedMessages, errorResponse]
+      setMessages(errorMessages)
+      saveMessagesToLocalStorage(errorMessages)
     } finally {
       setIsTyping(false)
     }
@@ -188,32 +292,57 @@ export function ChatInterface() {
         </div>
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-2 space-y-2">
-            {mockChatSessions.map((session) => (
-              <Card
-                key={session.id}
-                className={cn(
-                  "cursor-pointer transition-colors hover:bg-accent",
-                  selectedSession === session.id && "bg-accent border-primary",
-                )}
-                onClick={() => setSelectedSession(session.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm truncate">{session.title}</h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {session.documentCount} docs
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{session.lastMessage}</p>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {formatRelativeTime(session.timestamp)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {chatSessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">No chat sessions yet</p>
+                <p className="text-xs mt-1">Upload documents and start chatting!</p>
+              </div>
+            ) : (
+              chatSessions.map((session) => {
+                const lastMessage = session.messages[session.messages.length - 1]
+                const sessionDate = new Date(session.createdAt)
+                
+                return (
+                  <Card
+                    key={session.id}
+                    className={cn(
+                      "cursor-pointer transition-colors hover:bg-accent",
+                      selectedSession === session.id && "bg-accent border-primary",
+                    )}
+                    onClick={() => {
+                      setSelectedSession(session.id)
+                      setMessages(session.messages.map((msg: any) => ({
+                        ...msg,
+                        timestamp: new Date(msg.timestamp || msg.createdAt)
+                      })))
+                      setSelectedDocument({
+                        id: session.documentId,
+                        name: session.documentName
+                      })
+                    }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium text-sm truncate">{session.documentName}</h3>
+                          <Badge variant="secondary" className="text-xs">
+                            1 doc
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {lastMessage?.content || "New chat session"}
+                        </p>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {formatRelativeTime(sessionDate)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
           </div>
         </ScrollArea>
       </div>
@@ -229,10 +358,13 @@ export function ChatInterface() {
               </h1>
               <p className="text-sm text-muted-foreground truncate">Ask questions about your uploaded documents</p>
             </div>
-            <Badge variant="outline" className="flex items-center flex-shrink-0">
-              <FileText className="w-3 h-3 mr-1" />
-              {selectedDocument ? "1 document active" : "No document selected"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <SpeechToggle />
+              <Badge variant="outline" className="flex items-center flex-shrink-0">
+                <FileText className="w-3 h-3 mr-1" />
+                {selectedDocument ? "1 document active" : "No document selected"}
+              </Badge>
+            </div>
           </div>
           {selectedDocument && (
             <div className="mt-2 p-2 bg-muted rounded-lg">

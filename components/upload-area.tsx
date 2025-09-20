@@ -96,7 +96,14 @@ export function UploadArea() {
             } else if (file.status === "processing") {
               clearInterval(interval)
 
+              // Update localStorage when file is completed
               setTimeout(() => {
+                const existingDocs = JSON.parse(localStorage.getItem("uploadedDocuments") || "[]")
+                const updatedDocs = existingDocs.map((doc: any) => 
+                  doc.id === fileId ? { ...doc, status: "completed", progress: 100 } : doc
+                )
+                localStorage.setItem("uploadedDocuments", JSON.stringify(updatedDocs))
+                
                 window.dispatchEvent(new CustomEvent("documentsUpdated"))
                 console.log("[v0] File completed:", fileId)
               }, 0)

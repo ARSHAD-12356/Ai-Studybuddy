@@ -28,35 +28,12 @@ export function DocumentList() {
   useEffect(() => {
     const loadDocuments = () => {
       const uploadedDocs = JSON.parse(localStorage.getItem("uploadedDocuments") || "[]")
-      const mockDocuments = [
-        {
-          id: "1",
-          name: "Biology Chapter 12.pdf",
-          uploadDate: "2 hours ago",
-          size: 2400000,
-          status: "completed",
-          flashcards: 15,
-          chatSessions: 3,
-        },
-        {
-          id: "2",
-          name: "Math Formulas.pdf",
-          uploadDate: "1 day ago",
-          size: 1800000,
-          status: "completed",
-          flashcards: 22,
-          chatSessions: 1,
-        },
-      ]
 
-      // Combine uploaded documents with mock documents
-      const allDocs = [
-        ...uploadedDocs.map((doc: any) => ({
-          ...doc,
-          uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleString() : "Just now",
-        })),
-        ...mockDocuments,
-      ]
+      // Only use real uploaded documents, no mock data
+      const allDocs = uploadedDocs.map((doc: any) => ({
+        ...doc,
+        uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleString() : "Just now",
+      }))
 
       setDocuments(allDocs)
     }
@@ -75,10 +52,38 @@ export function DocumentList() {
   }, [])
 
   const handleProceedToChat = (docId: string, docName: string) => {
-    // Create a new chat session ID for this specific document
-    const chatSessionId = `chat_${docId}_${Date.now()}`
+    // Check if chat session already exists for this document
+    const existingChats = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+    const existingSession = existingChats.find((session: any) => session.documentId === docId)
+    
+    let chatSessionId: string
+    
+    if (existingSession) {
+      // Use existing session
+      chatSessionId = existingSession.id
+    } else {
+      // Create a new chat session only if it doesn't exist
+      chatSessionId = `chat_${docId}_${Date.now()}`
+      const newChatSession = {
+        id: chatSessionId,
+        documentId: docId,
+        documentName: docName,
+        messages: [
+          {
+            id: "welcome",
+            role: "assistant",
+            content: `Hello! I'm your AI study assistant. I can help you understand your uploaded document "${docName}", create study materials, and answer questions. What would you like to learn about today?`,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+      }
 
-    // Store the selected document with new session info
+      existingChats.unshift(newChatSession)
+      localStorage.setItem("chatSessions", JSON.stringify(existingChats))
+    }
+
+    // Store the selected document with session info (existing or new)
     localStorage.setItem(
       "selectedDocument",
       JSON.stringify({
@@ -88,26 +93,6 @@ export function DocumentList() {
         timestamp: new Date().toISOString(),
       }),
     )
-
-    // Create a new chat session in localStorage
-    const existingChats = JSON.parse(localStorage.getItem("chatSessions") || "[]")
-    const newChatSession = {
-      id: chatSessionId,
-      documentId: docId,
-      documentName: docName,
-      messages: [
-        {
-          id: "welcome",
-          role: "assistant",
-          content: `Hello! I'm your AI study assistant. I can help you understand your uploaded document "${docName}", create study materials, and answer questions. What would you like to learn about today?`,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-      createdAt: new Date().toISOString(),
-    }
-
-    existingChats.unshift(newChatSession)
-    localStorage.setItem("chatSessions", JSON.stringify(existingChats))
 
     // Update user stats
     incrementStat("totalStudySessions")
@@ -124,10 +109,28 @@ export function DocumentList() {
     const updatedDocs = documents.filter((doc) => doc.id !== docId)
     setDocuments(updatedDocs)
 
-    // Update localStorage
+    // Update localStorage - remove document
     const uploadedDocs = JSON.parse(localStorage.getItem("uploadedDocuments") || "[]")
     const filteredUploadedDocs = uploadedDocs.filter((doc: any) => doc.id !== docId)
     localStorage.setItem("uploadedDocuments", JSON.stringify(filteredUploadedDocs))
+
+    // Also delete the corresponding chat session
+    const existingChats = JSON.parse(localStorage.getItem("chatSessions") || "[]")
+    const filteredChats = existingChats.filter((session: any) => session.documentId !== docId)
+    localStorage.setItem("chatSessions", JSON.stringify(filteredChats))
+
+    // Clear selected document if it's the one being deleted
+    const selectedDoc = localStorage.getItem("selectedDocument")
+    if (selectedDoc) {
+      try {
+        const parsedDoc = JSON.parse(selectedDoc)
+        if (parsedDoc.id === docId) {
+          localStorage.removeItem("selectedDocument")
+        }
+      } catch (error) {
+        console.error("Error parsing selected document:", error)
+      }
+    }
 
     window.dispatchEvent(new CustomEvent("documentsUpdated"))
   }
@@ -174,7 +177,7 @@ export function DocumentList() {
                   </div>
 
                   {/* Action Buttons Section */}
-                  {doc.status === "completed" && (
+                  {doc.status === "completed" ? (
                     <div className="flex flex-col gap-3">
                       {/* Primary Action Button */}
                       <Button
@@ -225,6 +228,19 @@ export function DocumentList() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                    </div>
+                  ) : (
+                    // Show delete button for uploading/processing files
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </div>
