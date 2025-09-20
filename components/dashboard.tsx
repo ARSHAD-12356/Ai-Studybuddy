@@ -18,8 +18,21 @@ export function Dashboard() {
     return remainingMinutes > 0 ? `${hours}.${Math.round((remainingMinutes / 60) * 10)}h` : `${hours}h`
   }
 
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-full overflow-x-hidden">
+      {/* Go Premium Button - top right */}
+      <div className="flex justify-end mb-2">
+        <Button
+          className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-bold shadow-lg hover:from-yellow-500 hover:to-yellow-600 px-6 py-2 rounded-lg border border-yellow-300"
+          size="lg"
+          onClick={() => router.push('/pricing')}
+        >
+          <span className="mr-2">Go Premium</span>
+          <Trophy className="w-5 h-5 text-yellow-700" />
+        </Button>
+      </div>
+
       {/* Welcome Section */}
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold text-balance text-foreground">Welcome back, {getFirstName()}!</h1>
@@ -101,7 +114,7 @@ export function Dashboard() {
               {user?.stats.studyStreak || 0} days
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              {user?.stats.studyStreak > 0 ? "🔥 Keep it up!" : "Start your streak!"}
+              {user?.stats?.studyStreak && user.stats.studyStreak > 0 ? "🔥 Keep it up!" : "Start your streak!"}
             </p>
           </CardContent>
         </Card>
@@ -118,7 +131,7 @@ export function Dashboard() {
               {user?.stats.flashcardsMastered || 0}
             </div>
             <p className="text-xs text-green-700 dark:text-green-300">
-              {user?.stats.flashcardsMastered > 0 ? "Great progress!" : "Start practicing!"}
+              {user?.stats?.flashcardsMastered && user.stats.flashcardsMastered > 0 ? "Great progress!" : "Start practicing!"}
             </p>
           </CardContent>
         </Card>
@@ -148,7 +161,7 @@ export function Dashboard() {
               {user?.stats.achievementScore || 0}
             </div>
             <p className="text-xs text-orange-700 dark:text-orange-300">
-              {user?.stats.achievementScore > 1000 ? "Expert Level" : "Getting Started"}
+              {user?.stats?.achievementScore && user.stats.achievementScore > 1000 ? "Expert Level" : "Getting Started"}
             </p>
           </CardContent>
         </Card>
@@ -223,11 +236,11 @@ export function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">
-                {user?.stats.studyStreak > 0 ? "You're doing great! 🎉" : "Ready to start your journey? 🚀"}
+                {user?.stats?.studyStreak && user.stats.studyStreak > 0 ? "You're doing great! 🎉" : "Ready to start your journey? 🚀"}
               </h3>
               <p className="text-muted-foreground">
-                {user?.stats.studyStreak > 0
-                  ? `You've maintained a ${user.stats.studyStreak}-day study streak. Keep up the excellent work!`
+                {user?.stats?.studyStreak && user.stats.studyStreak > 0
+                  ? `You've maintained a ${user.stats?.studyStreak ?? 0}-day study streak. Keep up the excellent work!`
                   : "Upload your first document and start building your study streak today!"}
               </p>
             </div>

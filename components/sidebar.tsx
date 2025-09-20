@@ -12,7 +12,7 @@ const navigation = [
   { name: "Flashcards", href: "/flashcards", icon: BookOpen },
   { name: "Progress", href: "/progress", icon: BarChart3 },
   { name: "Achievements", href: "/achievements", icon: Trophy },
-  { name: "My Notes", href: "/notes", icon: FileText },
+  { name: "Smart Notes", href: "/notes", icon: FileText },
 ]
 
 export function Sidebar() {
