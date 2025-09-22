@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,19 +8,17 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { NotificationPanel } from "./notification-panel"
 import { authService } from "@/lib/auth"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useUser } from "@/contexts/user-context"
+
 
 export function Header() {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
+  const { user, getInitials } = useUser()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser()
-    if (currentUser) {
-      setUser(currentUser)
-    }
-
     const darkMode = localStorage.getItem("darkMode") === "true"
     setIsDarkMode(darkMode)
     if (darkMode) {
@@ -49,13 +47,7 @@ export function Header() {
     router.push("/profile")
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-  }
+  // getInitials now comes from useUser for consistency
 
   return (
     <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6">
@@ -81,13 +73,14 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              className="relative h-8 w-8 rounded-full bg-primary p-0"
-              onClick={() => { console.log('Profile trigger clicked'); }}
-            >
-              <span className="text-sm font-medium text-primary-foreground">
-                {user ? getInitials(user.name) : "U"}
-              </span>
+            <Button className="relative h-8 w-8 rounded-full bg-primary p-0 flex items-center justify-center overflow-hidden">
+              <Avatar className="h-8 w-8">
+                {user?.profilePicture ? (
+                  <AvatarImage src={user.profilePicture} alt={user.name || "Profile"} />
+                ) : (
+                  <AvatarFallback>{user ? getInitials() : "U"}</AvatarFallback>
+                )}
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -105,7 +98,7 @@ export function Header() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
+            <DropdownMenuItem onClick={() => router.push("/settings")}> 
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
@@ -119,3 +112,4 @@ export function Header() {
     </header>
   )
 }
+

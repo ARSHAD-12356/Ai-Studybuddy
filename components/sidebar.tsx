@@ -16,7 +16,7 @@ const navigation = [
 ]
 
 export function Sidebar() {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
 
   return (
     <>
